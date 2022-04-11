@@ -1,6 +1,6 @@
 ####################################################################################
-# This is for every branch to compare the manifest with the previous commit.
-# The git hook receive the pull_event event. It will compare manifest and dependencies with previous commit automatically.
+# This is for every branch to compare the first commit with the current commit to generate the class diff graph.
+# The git hook receive the pull_event event. It will compare the two record and help us generate a diff image and put it in a new branch.
 ####################################################################################
 
 ## Work flow name.
