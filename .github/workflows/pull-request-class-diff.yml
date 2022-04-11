@@ -1,6 +1,6 @@
 ####################################################################################
-# This is for every branch to compare the manifest with the previous commit.
-# The git hook receive the pull_event event. It will compare manifest and dependencies with previous commit automatically.
+# This is for every branch to compare the first commit with the current commit to generate the class diff graph.
+# The git hook receive the pull_event event. It will compare the two record and help us generate a diff image and put it in a new branch.
 ####################################################################################
 
 ## Work flow name.
@@ -53,7 +53,7 @@ jobs:
         run: |
           echo "previous_commit:$before_commit current_commit:$current_commit"
           build_dir="${{ github.workspace }}/build"
-          mkdir $build_dir
+          mkdir -p $build_dir
           diff_file="$build_dir/diff.txt"
           git diff --name-only "$before_commit" "$current_commit" | grep '[.kt|.java]$' > $diff_file
           echo "The diff file list"
@@ -119,7 +119,7 @@ jobs:
           build_dir="${{ github.workspace }}/build"
           dot_file="$build_dir/class_diff_graph.dot"
           output_dir=${{ github.workspace }}/class_diff
-          mkdir $output_dir
+          mkdir -p $output_dir
           create_date=$(date '+%Y_%m_%d_%H_%M_%S')
           png_output_file="$output_dir/class_diff_$create_date.png"
           dot -Tpng $dot_file -o$png_output_file
