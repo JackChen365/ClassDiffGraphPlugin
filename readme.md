@@ -103,3 +103,8 @@ Finally, use `graphviz` convert the dot file to png.
 
 Here is a Github actions [workflow](.github/workflows/pull-request-class-diff.yml) to combine it
 together.
+
+I've tested the whole process in this PR and Github actions. If you want to know more detail about this plugin. Take a look at this PR and record.
+
+* [Test PR](https://github.com/JackChen365/ClassDiffGraphPlugin/pull/1)
+* [Github actions record](https://github.com/JackChen365/ClassDiffGraphPlugin/actions/runs/2148916610)
