@@ -1,0 +1,2 @@
+com.squareup.otto.sample.LocationMapFragment=androidx.fragment.app.Fragment
+com.squareup.otto.sample.LocationActivity=androidx.fragment.app.FragmentActivity

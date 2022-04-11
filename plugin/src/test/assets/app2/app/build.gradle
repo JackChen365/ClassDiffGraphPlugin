@@ -1,0 +1,52 @@
+plugins {
+    id 'com.android.application'
+    //id 'plugin-placeholder'
+}
+
+android {
+    compileSdk 31
+
+    defaultConfig {
+        applicationId "com.squareup.otto.sample"
+        minSdk 23
+        targetSdk 31
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+classdiff {
+    componentListFiles project.file("../component_list.txt")
+    filterPackages "boolean", "int", "short", "double", "float", "char"
+    library {
+        packageName = "android"
+        desc = "Android"
+    }
+    library {
+        packageName = "androidx"
+        desc = "Androidx"
+    }
+    library {
+        packageName = "java"
+        includes = ["boolean", "int", "short", "double", "float", "char"]
+        desc = "Java"
+    }
+}
+
+dependencies {
+
+    implementation 'androidx.appcompat:appcompat:1.4.1'
+    implementation 'com.google.android.material:material:1.5.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.3'
+}

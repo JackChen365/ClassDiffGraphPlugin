@@ -1,0 +1,136 @@
+####################################################################################
+# This is for every branch to compare the manifest with the previous commit.
+# The git hook receive the pull_event event. It will compare manifest and dependencies with previous commit automatically.
+####################################################################################
+
+## Work flow name.
+name: pull-request-compare-class-diff-with-previous
+on:
+  pull_request:
+
+# All the global env variables.
+env:
+  REPO_BUILD_WEB_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+  GIT_UPDATE_BRANCH: ${{ github.actor }}/class_diff_graph_${{ github.run_id }}
+jobs:
+  compare_class_diff:
+    runs-on: ubuntu-latest
+    steps:
+      # Check out the repo.
+      - name: Check out the repo
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref }}
+
+      # Output all the env variable for debug.
+      - name: Output the debug env vars
+        run: |
+          echo "${{ steps.build_number.outputs.id }}"
+          echo "$REPO_BUILD_WEB_URL"
+          echo "${{ toJson(github) }}"
+          echo "${{ matrix.task }}"
+          echo "${{ matrix.output_file }}"
+
+      - name: Prepare the commit info
+        id: commit_range
+        env:
+          head_branch: ${{ github.head_ref }}
+          base_branch: ${{ github.base_ref }}
+        run: |
+          first_commit_sha=$(git log origin/$base_branch..origin/$head_branch --format=%H | tail -n -1)
+          before_commita=$(git log "$first_commit_sha" --format=%H -n 2 | tail -n -1)
+          current_commit=$(git rev-parse --verify HEAD)
+
+          echo "::set-output name=before_commit::$before_commita"
+          echo "::set-output name=current_commit::$current_commit"
+
+      - name: Output diff class list
+        id: output_diff_step
+        env:
+          before_commit: ${{ steps.commit_range.outputs.before_commit }}
+          current_commit: ${{ steps.commit_range.outputs.current_commit }}
+        run: |
+          echo "previous_commit:$before_commit current_commit:$current_commit"
+          build_dir="${{ github.workspace }}/build"
+          mkdir $build_dir
+          diff_file="$build_dir/diff.txt"
+          git diff --name-only "$before_commit" "$current_commit" | grep '[.kt|.java]$' > $diff_file
+          echo "The diff file list"
+          echo "---------------------------------------------------------------------------"
+          cat $diff_file
+          echo "---------------------------------------------------------------------------"
+          # Convert the git diff file to class references
+          class_references_file="$build_dir/class_references.txt"
+          ./gradlew \
+            "-Pdiff_file=$diff_file" \
+            "-Poutput_diff_classes=$class_references_file" \
+            :app:outputDiffClassesTask
+          cat $class_reference_file
+
+          echo "::set-output name=diff_file::$diff_file"
+          echo "::set-output name=class_references_file::$class_references_file"
+
+      - name: Transform class for class graph
+        id: transform_task
+        env:
+          before_commit: ${{ steps.commit_range.outputs.before_commit }}
+          current_commit: ${{ steps.commit_range.outputs.current_commit }}
+          diff_file: ${{ steps.output_diff_step.outputs.diff_file }}
+          class_references_file: ${{ steps.output_diff_step.outputs.class_references_file }}
+        run: |
+          build_dir="${{ github.workspace }}/build"
+          class_references_before="$build_dir/class_references_before.json"
+          class_references_after="$build_dir/class_references_after.json"
+          git reset --hard "$before_commit"
+          ./gradlew -Pdiff_file=$diff_file :app:transformClassesWithClassGraphBuildForDebug
+          mv "class_references.json" "$class_references_before"
+          git reset --hard "$current_commit"
+          ./gradlew -Pdiff_file=$diff_file :app:transformClassesWithClassGraphBuildForDebug
+          mv "class_references.json" "$class_references_after"
+          echo "::set-output name=class_references_before::$class_references_before"
+          echo "::set-output name=class_references_after::$class_references_after"
+
+      - name: Build class diff graph
+        id: class_diff_graph
+        env:
+          diff_file: ${{ steps.output_diff_step.outputs.diff_file }}
+          class_references_before: ${{ steps.transform_task.outputs.class_references_before }}
+          class_references_after: ${{ steps.transform_task.outputs.class_references_after }}
+        run: |
+          # Generate the class diff graph
+          build_dir="${{ github.workspace }}/build"
+          dot_file_title="the diff class graph"
+          output_dot_file="$build_dir/class_diff_graph.dot"
+          ./gradlew --stacktrace\
+            "-Pclass_change_title=$dot_file_title" \
+            "-Poutput_dot_file=$output_dot_file" \
+            "-Pdiff_class_file=$diff_file" \
+            "-Pprevious_diff_file=$class_references_before" \
+            "-Pcurrent_diff_file=$class_references_after" \
+            :app:outputClassGraphDotTask
+          echo "::set-output name=output_dot_file::$output_dot_file"
+
+      - name: Setup Graphviz
+        uses: ts-graphviz/setup-graphviz@v1
+
+      - name: Convert dot to png
+        run: |
+          build_dir="${{ github.workspace }}/build"
+          dot_file="$build_dir/class_diff_graph.dot"
+          output_dir=${{ github.workspace }}/class_diff
+          mkdir $output_dir
+          create_date=$(date '+%Y_%m_%d_%H_%M_%S')
+          png_output_file="$output_dir/class_diff_$create_date.png"
+          dot -Tpng $dot_file -o$png_output_file
+
+      - uses: fregante/setup-git-user@v1
+
+      - name: Commit the change
+        run: |
+          echo $'\ncomponent_folder/' >>.gitignore
+          git checkout -b "$GIT_UPDATE_BRANCH"
+          git add .
+          git commit -m "Generate the class diff graph"
+          git push -u origin "$GIT_UPDATE_BRANCH"
+

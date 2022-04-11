@@ -1,0 +1,3 @@
+rootProject.name = 'ClassDiffPlugin'
+include 'app'
+include 'plugin'
