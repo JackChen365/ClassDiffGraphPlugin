@@ -14,7 +14,8 @@ env:
   GIT_UPDATE_BRANCH: ${{ github.actor }}/class_diff_graph_${{ github.run_id }}
 jobs:
   compare_class_diff:
-    runs-on: ubuntu-latest
+    # Switch to mini-linux only after the legacy Android toolchain passes on ARM64.
+    runs-on: ${{ vars.CLASS_DIFF_CI_RUNNER || 'ubuntu-latest' }}
     steps:
       # Check out the repo.
       - name: Check out the repo
